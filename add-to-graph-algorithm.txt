@@ -1,0 +1,79 @@
+This is the algorithm that we will use to add a new type to the lattice.
+
+The algorithm has two phases:
+ 1. finding the proper placement of the new type with regard to subtypes
+ 2. adding the necessary information regarding intersection lines.
+
+Some notation:
+ L : a type Lattice
+ T₁, T₂, ... : types
+ T ∈ L : T is represented by a node of L
+ L ⊢ φ : φ can be deduced from L (without using ACL2s)
+ T:(L) : The lattice resulting from adding T to L.
+ 
+ Γ : the ACL2s logical world
+ Γ ⊧ φ : φ can be proven by ACL2s
+
+I leave Γ and L as free variables below, in efforts to denote that
+they are always the 'current' lattice and world. There might be a
+better way to do this
+
+
+The 3 key properties that our lattice maintains are that:
+ 1. ∀ (T₁, T₂ ∈ L) . L ⊢ T₁ ⊆ T₂      // Subtype-complete
+ 2. ∀ (T₁, T₂ ∈ L) . L ⊢ T₁ ∩ T₂ = ∅  // Intersction-complete
+ 3. ∀ (φ) . [(L ⊢ φ) -> (Γ ⊧ φ)]      // Correctness
+
+Now, we discuss how to add a new type (T) to a lattice (L), assuming
+that L is both subtype and intersection complete, and correct.
+
+The algorithm succeeds if T can be added to L such that T:(L) is
+guaranteed to maintain subtype and intersection completeness. The
+algorithm fails if more information is needed, for some T₁ ∈ L about
+either (T ⊆ T₁) or (T ∩ T₁ = ∅). With this in mind, the output set of
+the algorithm is:
+
+ {'Success, `(Error subtype ,T ,T₁), `(Error intersection ,T ,T₁)}
+
+In the case where 'Success is returned, of course L  T:(L)
+
+**********************************************************************
+Primitive graph operations used:
+
+Children(T): returns all of the direct subtypes of T in L
+Parents(T): returns the direct supertypes of T in L
+SetParents(T₁, Ts): adds edges to L denoting that T₂ is a subtype of
+                    each type in Ts
+UnParents(T₁, Ts): removes the edges denoting that T₂ is a subtype of
+                    each type in Ts
+keepSmall(Ts): Removes from Ts all types T where ∃ (T₁ ∈ Ts). L ⊢ T₁ ⊆ T
+
+**********************************************************************
+Part 1 of algorithm: Determining the subtype positioning of T in T:(L)
+
+High level idea: Find all types T₁ such that T ⊆ T₁, and all types T₂
+such that T₂ ⊆ T. In addition, in the case where T₂ ⊆ T ⊆ T₁, remove
+the line that denotes that T₂ ⊆ T₁.
+
+def add-type(T)
+  S <- {'All} ; stack of nodes to visit
+  P <- {'All} ; parents of T
+  while (S != ∅){
+    T₁ = pop(S)
+    if Γ ⊧ (T ⊆ T₁){
+      S = S u Children(T₁)
+      P = P u {T₁}
+    }
+    else if !(Γ ⊧ T ⊈ T₁){
+      return `(Error subtype ,T ,T₁)
+    }
+    else if (Γ ⊧ T₁ ⊆ T){
+      SetParents(T₁, {T})
+      SetParents(T, keep-small(P))
+      UnParents(T₁, P)
+    }
+  }
+
+************************************************************
+Part 2 of algorithm: Filling in intersection lines for T:(L)
+

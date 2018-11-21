@@ -1,0 +1,5 @@
+(load "lattice.lisp")
+
+;; Next, we perform queries on the lattice, assuming that it's
+;; complete (Latticep L) = T
+

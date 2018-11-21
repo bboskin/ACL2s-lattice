@@ -1,0 +1,105 @@
+Assume that we have a complete type lattice.
+
+This means that for all T1, T2 in a lattice L,
+
+~T1 is in L, and T1 v T2 is in L (since if we show this, we will have
+a complete boolean base, and this suffices to say we have a boolean
+algebra).
+
+Some notation: <T1 M T2> = the meet (intersection type) of T1 and T2
+               <T1 J T2> = the join (sum type) of T1 and T2
+
+These are our lattice operations,
+and since our lattice is complete,
+we always have meets and joins
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;Queries to the Lattice
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Here are the queries that we support:
+
+Tell me if some formula is valid, unsatisfiable, satisfiable
+
+  Examples of valid formulas
+  	    (allp e),
+            (not (bottomp e)),
+	    (or (consp e) (atom e)),
+            (implies (consp e) (not (numberp e)))
+
+  Examples of unsatisfiable formulas
+            (bottomp e),
+	    (and (natp e) (negp e))
+
+  Examples of satisfiable
+            (consp e), (equal e nil)
+
+
+Here is our algorithm for doing this.
+
+First, we could simply ask ACL2s.
+ – If ACL2s says that the formula is a theorem, then we report VALID
+ - If ACL2s says that the negation of the formula is a theorem, then we report UNSAT
+ 
+ - if ACL2s fails, or we simply decide to go straight to the lattice:
+   Step 1: For each term in the formula (variables or function terms),
+           locate all type constraints on that variable.
+   Step 2: For each variable, express its constraints with only ~ and v, and
+           solve its constraints as follows:
+             Cases for T, a single type variable i.e., a node in the lattice
+	        T is strictly sat if ∃τ₁[<T M τ₁> ≠ ⊥]
+		                     ^ ∃τ₂.τ₂≠⊥ ^ [<T M τ₂> = ⊥]
+		T is valid if ∀τ.[<T M τ> = τ].
+		  By this definition, if T is strictly sat, it is not valid.
+		  (this will just make search easier)
+		T is unsat if ∀τ.[<T M τ> = ⊥]
+		  By this definition, if T is strictly sat, it is not unsat.
+             Cases for ¬T, the negation of an arbitrary type formula
+	        ¬T is strictly sat if T is strictly sat
+		¬T is unsat if T is valid
+		¬T is valid if T is unsat
+	     Cases for T₁ v T₂, the union of two arbitrary type formulas
+	        T₁ v T₂ is strictly sat if <T₁ J T₂> is strictly sat
+		T₁ v T₂ is valid if <T₁ J T₂> is valid
+		T₂ v T₂ is unsat if T₁ is unsat and T₂ is unsat
+
+         The proof that this works can be done by induction on T, the type formula
+
+
+    Step 3: find the results for each variable in the formula, and
+            give a final result accordingly. As we expect, if each
+	    variable's formula was valid, the whole thing, etc....
+		
+
+
+Here are our requirements for adding new types to the lattice.
+
+Here, the symbol ⊢ means that ACL2s figures it out without help,
+just to keep the algorithm simpler.
+
+If it simply follows from the lattice, then we write <T M T2> = T.
+
+1) User defines some type T.
+
+2) We attempt to add T to the lattice:
+   a) ACL2s needs to be able to decide the smallest type P ∈ L such that:
+      1. Γ ⊢ T ⊆ P and
+      2. ∀ τ ∈ L [(<τ M P> = τ) → Γ ⊢ τ ⊈ T]
+   b) Now, we find Q = {τ | <τ M P> ≠ ⊥}, and
+      determine <T M τ> and <T J τ> for all τ ∈ Q.
+      This is done using ACL2s.
+      For now, the process for doing this is as follows.
+      We have a set of types roles (M and J), and a set of types that
+      might fill that role (types in the lattice). We test each type for each role
+      and see if we have everything we need.
+      If not, we error, asking the user to provide such types.
+      Likely, we also will check with the user to be sure that the types
+      that we're going to add are good ones. That way, if the user has simpler
+      ones to add, they can intervene
+      
+      
+
+
+
+
