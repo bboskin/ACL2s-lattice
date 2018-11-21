@@ -1,5 +1,0 @@
-Assume that we have a complete type lattice.
-
-This means that for all T1, T2 in a lattice L,
-
-~T1 is in L, and T1 v T2 is in L
